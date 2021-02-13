@@ -5,7 +5,7 @@
   "main": "init.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Snipa22/node-crypto-pool.git"
+    "url": "https://github.com/xmrfast/nodejs-pool.git"
   },
   "author": "Alexander Blair",
   "license": "MIT",
