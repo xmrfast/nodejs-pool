@@ -13,17 +13,19 @@ worker - Does regular processing of statistics and sends status e-mails for non-
 API listens on port 8001, remoteShare listens on 8000
 
 Xmrpool.net (The reference implementation) uses the following setup:  
-* https://xmrpool.net is hosted on its own server, as the main website is a static frontend
-* https://api.xmrpool.net hosts api, remoteShare, longRunner, payments, blockManager, worker, as these must all be hosted with access to the same LMDB database.
+* https://xmrfast.com is hosted on its own server, as the main website is a static frontend
+* https://xmrfast.com/api hosts api, remoteShare, longRunner, payments, blockManager, worker, as these must all be hosted with access to the same LMDB database.
 
-Sample Caddyfile for API:
+Sample nginx for API:
 ```text
-https://api.xmrpool.net {
-    proxy /leafApi 127.0.0.1:8000
-    proxy / 127.0.0.1:8001
-    cors
-    gzip
-}
+<Location "/api">
+  ProxyPass http://127.0.0.1:8001
+  ProxyPassReverse http://127.0.0.1:8001
+</Location>
+<Location "/leafApi">
+  ProxyPass http://127.0.0.1:8000/leafApi
+  ProxyPassReverse http://127.0.0.1:8000/leafApi
+</Location>
 ```
 
 It is critically important that your webserver does not truncate the `/leafApi` portion of the URL for the remoteShare daemon, or it will not function!  Local pool servers DO use the remoteShare daemon, as this provides a buffer in case of an error with LMDB or another bug within the system, allowing shares and blocks to queue for submission as soon as the leafApi/remoteShare daemons are back up and responding with 200's.
@@ -35,7 +37,7 @@ Server Requirements
 -------------------
 * 4 Gb Ram
 * 2 CPU Cores (with AES_NI)
-* 60 Gb SSD-Backed Storage - If you're doing a multi-server install, the leaf nodes do not need this much storage.  They just need enough storage to hold the blockchain for your node.  The pool comes configured to use up to 24Gb of storage for LMDB.  Assuming you have the longRunner worker running, it should never get near this size, but be aware that it /can/ bloat readily if things error, so be ready for this!
+* 200 Gb SSD-Backed Storage - If you're doing a multi-server install, the leaf nodes do not need this much storage.  They just need enough storage to hold the blockchain for your node.  The pool comes configured to use up to 24Gb of storage for LMDB.  Assuming you have the longRunner worker running, it should never get near this size, but be aware that it /can/ bloat readily if things error, so be ready for this!
 * Notably, this happens to be approximately the size of a 4Gb linode instance, which is where the majority of automated deployment testing happened!
 
 Pre-Deploy
@@ -49,7 +51,7 @@ Deployment via Installer
 ------------------------
 
 1. Add your user to `/etc/sudoers`, this must be done so the script can sudo up and do it's job.  We suggest passwordless sudo.  Suggested line: `<USER> ALL=(ALL) NOPASSWD:ALL`.  Our sample builds use: `pooldaemon ALL=(ALL) NOPASSWD:ALL`
-2. Run the [deploy script](https://raw.githubusercontent.com/Snipa22/nodejs-pool/master/deployment/deploy.bash) as a **NON-ROOT USER**.  This is very important!  This script will install the pool to whatever user it's running under!  Also.  Go get a coffee, this sucker bootstraps the monero installation.
+2. Run the [deploy script](https://raw.githubusercontent.com/xmrfast/nodejs-pool/master/deployment/deploy.bash) as a **NON-ROOT USER**.  This is very important!  This script will install the pool to whatever user it's running under!  Also.  Go get a coffee, this sucker bootstraps the monero installation.
 3. Once it's complete, change as `config.json` appropriate.  It is pre-loaded for a local install of everything, running on 127.0.0.1.  This will work perfectly fine if you're using a single node setup.  You'll also want to set `bind_ip` to the external IP of the pool server, and `hostname` to the resolvable hostname for the pool server. `pool_id` is mostly used for multi-server installations to provide unique identifiers in the backend. You will also want to run: source ~/.bashrc  This will activate NVM and get things working for the following pm2 steps.
 4. You'll need to change the API endpoint for the frontend code in the `poolui/build/globals.js` and `poolui/build/globals.default.js` -- This will usually be `http(s)://<your server FQDN>/api` unless you tweak caddy!
 5. The default database directory `/home/<username>/pool_db/` is already been created during startup. If you change the `db_storage_path` just make sure your user has write permissions for new path. Run: `pm2 restart api` to reload the API for usage.  
@@ -70,12 +72,12 @@ pm2 restart api
 
 Install Script:
 ```bash
-curl -L https://raw.githubusercontent.com/Snipa22/nodejs-pool/master/deployment/deploy.bash | bash
+curl -L https://raw.githubusercontent.com/xmrfast/nodejs-pool/master/deployment/deploy.bash | bash
 ```
 
 Assumptions for the installer
 -----------------------------
-The installer assumes that you will be running a single-node instance and using a clean Ubuntu 16.04 server install.  The following system defaults are set:
+The installer assumes that you will be running a single-node instance and using a clean Ubuntu 16.04 / 18.04 server install.  The following system defaults are set:
 * MySQL Username: pool
 * MySQL Password: 98erhfiuehw987fh23d
 * MySQL Host: 127.0.0.1
@@ -86,7 +88,7 @@ The installer assumes that you will be running a single-node instance and using 
 The following raw binaries **MUST BE AVAILABLE FOR IT TO BOOTSTRAP**:
 * sudo
 
-I've confirmed that the default server 16.04 installation has these requirements.
+I've confirmed that the default server 16.04 / 18.04 installation has these requirements.
 
 The pool comes pre-configured with values for Monero (XMR), these may need to be changed depending on the exact requirements of your coin.  Other coins will likely be added down the road, and most likely will have configuration.sqls provided to overwrite the base configurations for their needs, but can be configured within the frontend as well.
 
@@ -100,7 +102,7 @@ The pool is designed to have a dual-wallet design, one which is a fee wallet, on
 2. Make sure to save your regeneration stuff!
 3. For the pool wallet, store the password in a file, the suggestion is `~/wallet_pass`
 4. Change the mode of the file with chmod to 0400: `chmod 0400 ~/wallet_pass`
-5. Start the wallet using PM2: `pm2 start /usr/local/src/monero/build/release/bin/monero-wallet-rpc -- --rpc-bind-port 18082 --password-file ~/wallet_pass --wallet-file <Your wallet name here> --disable-rpc-login --trusted-daemon`
+5. Start the wallet using PM2: `pm2 start /usr/local/src/monero/build/release/bin/monero-wallet-rpc -- --rpc-bind-port 18089 --password-file ~/wallet_pass --wallet-file <Your wallet name here> --disable-rpc-login --trusted-daemon`
 6. If you don't use PM2, then throw the wallet into a screen and have fun.
 
 Manual Setup
@@ -124,7 +126,7 @@ general/emailFrom
 SQL import command: sudo mysql pool < ~/nodejs-pool/sample_config.sql (Adjust name/path as needed!)
 ```
 
-The shareHost configuration is designed to be pointed at wherever the leafApi endpoint exists.  For xmrpool.net, we use https://api.xmrpool.net/leafApi.  If you're using the automated setup script, you can use: `http://<your IP>/leafApi`, as Caddy will proxy it.  If you're just using localhost and a local pool serv, http://127.0.0.1:8000/leafApi will do you quite nicely
+The shareHost configuration is designed to be pointed at wherever the leafApi endpoint exists.If you're just using localhost and a local pool serv, http://127.0.0.1:8000/leafApi will do you quite nicely
 
 Additional ports can be added as desired, samples can be found at the end of base.sql.  If you're not comfortable with the MySQL command line, I highly suggest MySQL Workbench or a similar piece of software (I use datagrip!).  Your root MySQL password can be found in `/root/.my.cnf`
 
@@ -139,8 +141,6 @@ This will remove the administrator user until there's an easier way to change th
 UPDATE pool.users SET email='your new password here' WHERE username='Administrator';
 ```
 The email field is used as the default password field until the password is changed, at which point, it's hashed and dumped into the password field instead, and using the email field as a password is disabled.
-
-You should take a look at the [wiki](https://github.com/Snipa22/nodejs-pool/wiki/Configuration-Details) for specific configuration settings in the system.
 
 Pool Update Procedures
 ======================
