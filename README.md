@@ -235,7 +235,6 @@ For 1 in 1000000 chance that the pool will go bankrupt: 5% fee -> 1200 2% fee ->
 For 1 in 1000000000 chance: 5% fee -> 1800 2% fee -> 4500
 ```
 
-The developers of the pool have not verified this, but based on our own usage on https://xmrpool.net/ this seems rather reasonable.  You should be wary if you're considering PPS and take you fees into account appropriately!
 
 Installation/Configuration Assistance
 =====================================
@@ -250,7 +249,7 @@ If you'd like assistance with setting up node-cryptonote-pool, please provide wh
 
 Assistance is not available for frontend customization at this time.
 
-For assistance, please contact Snipa at pool_install@snipanet.com or via IRC at irc.freenode.net in the #monero-pools channel.
+For assistance, please contact xmrfast@gmail.com
 
 Developer Donations
 ===================
